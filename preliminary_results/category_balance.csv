@@ -1,0 +1,10 @@
+#,Category,Count,Pct,Flag
+1,Verify (yes/no),27413,20.76,✅ WELL-REPRESENTED
+2,Choose,16229,12.29,✅ WELL-REPRESENTED
+3,Logical,16096,12.19,✅ WELL-REPRESENTED
+4,Compare,4157,3.15,
+5,Object query,0,0.0,⚠️ TOO SMALL
+6,Attribute query,18092,13.7,✅ WELL-REPRESENTED
+7,Relation query,40278,30.5,✅ WELL-REPRESENTED
+8,Category query,7185,5.44,✅ WELL-REPRESENTED
+9,Counting (how many),0,0.0,⚠️ TOO SMALL

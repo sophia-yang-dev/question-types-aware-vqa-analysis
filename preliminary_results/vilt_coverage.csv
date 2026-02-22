@@ -1,0 +1,12 @@
+type,category,total,covered,coverage_pct
+structural,verify,27413,27413,100.0
+structural,query,68167,64223,94.2
+structural,choose,16229,15851,97.7
+structural,logical,16096,16096,100.0
+structural,compare,4157,4042,97.2
+semantic,rel,61634,58805,95.4
+semantic,attr,42201,41414,98.1
+semantic,obj,15564,15564,100.0
+semantic,cat,8616,8070,93.7
+semantic,global,4047,3772,93.2
+overall,all,132062,127625,96.6
