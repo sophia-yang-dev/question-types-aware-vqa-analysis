@@ -209,3 +209,9 @@ __marimo__/
 # data
 data/
 preliminary_results/sample_images/
+all_predictions.jsonl
+per_question_stats.csv
+
+# mac
+.DS_Store
+
