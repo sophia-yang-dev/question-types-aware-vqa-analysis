@@ -1,0 +1,36 @@
+=================================================================
+BLIP CORRECT-ISH MISMATCH ANALYSIS
+=================================================================
+Total questions        :  132,062
+BLIP correct           :   69,870  (52.907%)
+BLIP wrong             :   62,192  (47.093%)
+  ↳ correct-ish        :    5,152  (8.284% of wrong)
+  ↳ genuinely wrong    :   57,040
+
+Breakdown by mismatch category (can overlap):
+  Category                Count  % of wrong   Impact on acc
+  -------------------------------------------------------
+  plural                  1,335       2.15%         +1.011%
+  blip_superset           3,004       4.83%         +2.275%
+  blip_subset             1,959       3.15%         +1.483%
+  prep_prefix               281       0.45%         +0.213%
+  article_only                0       0.00%         +0.000%
+  synonym_overlap           189       0.30%         +0.143%
+
+Accuracy if all correct-ish counted as correct:
+  Strict exact-match : 0.5291
+  Relaxed (all fixed): 0.5681  (+0.0390)
+
+Correct-ish breakdown by structural type:
+  query       wrong=39,029  correct-ish=4,893  (12.54% of wrong)
+  verify      wrong= 7,629  correct-ish=    0  (0.00% of wrong)
+  logical     wrong= 7,164  correct-ish=   16  (0.22% of wrong)
+  choose      wrong= 6,232  correct-ish=  223  (3.58% of wrong)
+  compare     wrong= 2,138  correct-ish=   20  (0.94% of wrong)
+
+Correct-ish breakdown by semantic type:
+  rel         wrong=31,996  correct-ish=3,842  (12.01% of wrong)
+  attr        wrong=17,789  correct-ish=  570  (3.20% of wrong)
+  obj         wrong= 6,782  correct-ish=   15  (0.22% of wrong)
+  cat         wrong= 3,855  correct-ish=  551  (14.29% of wrong)
+  global      wrong= 1,770  correct-ish=  174  (9.83% of wrong)
