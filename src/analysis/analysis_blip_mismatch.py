@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-milestone1_full_inference/analysis_blip_mismatch.py
+src/analysis/analysis_blip_mismatch.py
 
 Finds all BLIP "correct-ish" failures — cases where exact-match reports wrong
 but the prediction is semantically close to the ground truth.
@@ -25,9 +25,9 @@ from pathlib import Path
 import pandas as pd
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-MILESTONE_DIR    = Path(__file__).resolve().parent
-PREDICTIONS_FILE = MILESTONE_DIR / "predictions" / "all_predictions.jsonl"
-RESULTS_DIR      = MILESTONE_DIR / "results"
+PROJECT_ROOT     = Path(__file__).resolve().parent.parent.parent
+PREDICTIONS_FILE = PROJECT_ROOT / "results" / "predictions" / "all_predictions.jsonl"
+RESULTS_DIR      = PROJECT_ROOT / "results"
 
 # ── Normalization (same as inference script) ───────────────────────────────────
 _NUM_MAP = {

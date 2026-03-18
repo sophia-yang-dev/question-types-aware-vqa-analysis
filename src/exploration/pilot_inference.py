@@ -4,6 +4,7 @@ import random
 import time
 import csv
 import re
+from pathlib import Path
 import pandas as pd
 import torch
 from PIL import Image
@@ -12,10 +13,11 @@ from transformers import (
     ViltProcessor, ViltForQuestionAnswering,
 )
 
-DATA_PATH = "data/questions1.2/val_balanced_questions.json"
-IMAGES_DIR = "preliminary_results/sample_images"
-OUT_DIR = "preliminary_results"
-IDS_FILE = "preliminary_results/sampled_image_ids.txt"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+DATA_PATH  = PROJECT_ROOT / "data" / "questions1.2" / "val_balanced_questions.json"
+IMAGES_DIR = PROJECT_ROOT / "results" / "exploration" / "sample_images"
+OUT_DIR    = PROJECT_ROOT / "results" / "exploration"
+IDS_FILE   = PROJECT_ROOT / "results" / "exploration" / "sampled_image_ids.txt"
 
 random.seed(42)
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-milestone1_full_inference/analyze_results.py
+src/analysis/analyze_results.py
 
-Runs BOTH strict and relaxed evaluation on predictions/all_predictions.jsonl
+Runs BOTH strict and relaxed evaluation on results/predictions/all_predictions.jsonl
 and saves results to two subdirectories:
   results/strict/    — standard exact-match after basic normalization
   results/relaxed/   — extended normalization (configurable below)
@@ -17,8 +17,8 @@ Additionally saves to results/:
   per_question_stats.csv   — one row per question, correctness under both modes
 
 Usage:
-  python analyze_results.py
-  python analyze_results.py --predictions predictions/all_predictions.jsonl
+  python src/analysis/analyze_results.py
+  python src/analysis/analyze_results.py --predictions results/predictions/all_predictions.jsonl
 """
 
 import argparse
@@ -32,9 +32,9 @@ import pandas as pd
 import seaborn as sns
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-MILESTONE_DIR    = Path(__file__).resolve().parent
-PREDICTIONS_FILE = MILESTONE_DIR / "predictions" / "all_predictions.jsonl"
-RESULTS_DIR      = MILESTONE_DIR / "results"
+PROJECT_ROOT     = Path(__file__).resolve().parent.parent.parent
+PREDICTIONS_FILE = PROJECT_ROOT / "results" / "predictions" / "all_predictions.jsonl"
+RESULTS_DIR      = PROJECT_ROOT / "results"
 
 # ── GQA 5×5 matrix definition ─────────────────────────────────────────────────
 STRUCTURAL_TYPES = ["query", "verify", "logical", "choose", "compare"]
@@ -372,7 +372,7 @@ def run_evaluation(df: pd.DataFrame, blip_col: str, vilt_col: str,
 
     # ── Summary file ──────────────────────────────────────────────────────────
     (out_dir / "summary.txt").write_text("\n".join(summary_lines) + "\n")
-    print(f"\nAll [{label}] results saved to: {out_dir.relative_to(MILESTONE_DIR)}/")
+    print(f"\nAll [{label}] results saved to: {out_dir.relative_to(PROJECT_ROOT)}/")
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────

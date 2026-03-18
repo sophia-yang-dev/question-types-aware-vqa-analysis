@@ -1,12 +1,14 @@
 import json
 import random
+from pathlib import Path
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-DATA_PATH = "/Users/xuefeiyang/Documents/NLP/question-types-aware-vqa-analysis/data/questions1.2/val_balanced_questions.json"
-OUT_DIR = "/Users/xuefeiyang/Documents/NLP/question-types-aware-vqa-analysis/preliminary_results"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+DATA_PATH = PROJECT_ROOT / "data" / "questions1.2" / "val_balanced_questions.json"
+OUT_DIR = PROJECT_ROOT / "results" / "exploration" / "figures"
 
 print("Loading val_balanced_questions.json ...")
 with open(DATA_PATH) as f:

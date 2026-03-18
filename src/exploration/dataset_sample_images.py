@@ -1,10 +1,12 @@
 import zipfile
 import random
 import os
+from pathlib import Path
 
-ZIP_PATH = "/Users/xuefeiyang/Documents/NLP/question-types-aware-vqa-analysis/data/images.zip"
-OUT_DIR = "/Users/xuefeiyang/Documents/NLP/question-types-aware-vqa-analysis/preliminary_results/sample_images"
-IDS_FILE = "/Users/xuefeiyang/Documents/NLP/question-types-aware-vqa-analysis/preliminary_results/sampled_image_ids.txt"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+ZIP_PATH = PROJECT_ROOT / "data" / "images.zip"
+OUT_DIR = PROJECT_ROOT / "results" / "exploration" / "sample_images"
+IDS_FILE = PROJECT_ROOT / "results" / "exploration" / "sampled_image_ids.txt"
 
 os.makedirs(OUT_DIR, exist_ok=True)
 

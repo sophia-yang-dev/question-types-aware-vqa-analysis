@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-milestone1_full_inference/run_inference.py
+src/inference/run_inference.py
 
 Full inference run of BLIP and ViLT on GQA balanced validation split.
 
@@ -18,7 +18,7 @@ Usage:
   python run_inference.py --skip-vilt     # BLIP only
 
 Output:
-  predictions/all_predictions.jsonl   — one JSON object per line
+  results/predictions/all_predictions.jsonl   — one JSON object per line
 """
 
 import argparse
@@ -41,12 +41,11 @@ from transformers import (
 )
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
-ROOT = Path(__file__).resolve().parent.parent
-QUESTIONS_PATH = ROOT / "data" / "questions1.2" / "val_balanced_questions.json"
-IMAGES_DIR     = ROOT / "data" / "images"       # extracted directory (preferred)
-IMAGES_ZIP     = ROOT / "data" / "images.zip"   # fallback
-MILESTONE_DIR  = Path(__file__).resolve().parent
-PREDICTIONS_FILE = MILESTONE_DIR / "predictions" / "all_predictions.jsonl"
+PROJECT_ROOT     = Path(__file__).resolve().parent.parent.parent
+QUESTIONS_PATH   = PROJECT_ROOT / "data" / "questions1.2" / "val_balanced_questions.json"
+IMAGES_DIR       = PROJECT_ROOT / "data" / "images"       # extracted directory (preferred)
+IMAGES_ZIP       = PROJECT_ROOT / "data" / "images.zip"   # fallback
+PREDICTIONS_FILE = PROJECT_ROOT / "results" / "predictions" / "all_predictions.jsonl"
 
 # ── Answer normalization ───────────────────────────────────────────────────────
 _NUM_MAP = {
