@@ -1,0 +1,113 @@
+\documentclass[11pt]{article}
+
+\usepackage[preprint]{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage{enumitem}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+\usepackage{booktabs}
+
+\title{Question-Type-Aware Evaluation of Multimodal Fusion Strategies in Vision-Language Models for VQA}
+
+\author{
+  \textbf{Sophia Yang} \\
+  Simon Fraser University \\
+  \texttt{xya134@sfu.ca}
+  \And
+  \textbf{Qingrui Li} \\
+  Simon Fraser University\\
+  \texttt{qingruil@sfu.ca}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Visual Question Answering (VQA) models are typically evaluated using overall accuracy, which can obscure systematic weaknesses across different reasoning types. In this project, we conduct a question-type-aware evaluation of two representative vision-language architectures, BLIP and ViLT. These models differ primarily in their multimodal fusion strategies and output formulations. Using the GQA balanced validation split, which provides a structured two-axis taxonomy of structural and semantic question types, we will evaluate both models across a 5$\times$5 question-type matrix covering 15 populated categories. We will further group categories into capability-level clusters and analyze how model accuracy varies with reasoning chain depth derived from GQA's functional program annotations. Our study aims to identify systematic performance patterns across question types and examine whether differences can be attributed to the models' fusion strategies.
+\end{abstract}
+
+%% ─────────────────────────────────────────────────────────────
+\section{Introduction}
+Visual Question Answering (VQA) is a multimodal task in which a model predicts a natural language answer given an image and a question: $(I, Q) \rightarrow A$. It requires joint visual recognition, language understanding, cross-modal alignment, and higher-order reasoning. Several vision-language models have achieved strong results on widely used VQA benchmarks \cite{tan2019lxmert, lu2019vilbert, kim2021vilt, li2022blip}.
+
+However, VQA performance is typically evaluated using overall accuracy aggregated over all question types, which can hide systematic weaknesses. Consider two questions from the same scene: \emph{``Does the grass look green?''} requires only a binary perceptual judgment, while \emph{``Is the boy to the left or right of the bag the lady is holding?''} requires localizing multiple objects and parsing a chained spatial relation. A model that excels at one but fails at the other has a qualitatively different capability profile that overall accuracy cannot reveal.
+
+We examine BLIP \cite{li2022blip} and ViLT \cite{kim2021vilt} across a structured taxonomy of question types. These two models represent fundamentally different fusion paradigms: BLIP connects image and text via explicit cross-modal attention (\emph{late fusion}), while ViLT processes image patches and text tokens jointly in a single transformer from the first layer (\emph{early fusion}). Both are publicly available with VQA-fine-tuned checkpoints and comparable in scale, making fusion strategy the primary variable we isolate.
+
+We study two questions: does each model perform consistently across all question types, or is it vulnerable in certain categories? And which categories show the largest gap between the two models, and can it be explained by their fusion strategies?
+
+%% ─────────────────────────────────────────────────────────────
+\section{Related Work}
+
+\subsection{VQA Datasets}
+
+VQA v2 \cite{goyal2017making} is a widely used benchmark that reduces language bias by pairing visually similar images with different answers, but it does not provide a principled taxonomy of question types. The GQA dataset \cite{hudson2019gqa} addresses this by generating questions compositionally from scene graphs and annotating every question with a structural type (the reasoning form required) and a semantic type (the visual content targeted), making it well-suited for the fine-grained evaluation we propose.
+
+\subsection{Vision-Language Models}
+Early VQA models introduced attention mechanisms to learn which image regions to attend to given a question \cite{anderson2018bottom, yang2016stacked}, followed by large-scale transformer-based pre-training with cross-modal attention \cite{lu2019vilbert, chen2020uniter}. More recent work diverges in fusion strategy. \textbf{ViLT} \cite{kim2021vilt} tokenizes raw image patches and processes them jointly with text tokens in a single transformer (\textit{early fusion}). \textbf{BLIP} \cite{li2022blip} encodes image and question separately and aligns them via cross-attention layers (\textit{late fusion}), pre-trained on large-scale image-text pairs for richer visual-semantic grounding.
+
+\subsection{Question-Type Analysis in VQA}
+Several studies suggest that aggregate accuracy is insufficient to characterize model reasoning. \citet{johnson2017clevr} showed models can exploit statistical regularities without genuine visual understanding, and \citet{agrawal2018don} demonstrated that strong models often effectively ignore the image for certain question types. These findings motivate our fine-grained evaluation across GQA's structured question taxonomy.
+
+%% ─────────────────────────────────────────────────────────────
+\section{Experimental Design}
+
+\subsection{Models}
+We evaluate two publicly available VQA v2 fine-tuned checkpoints from Hugging Face without any additional fine-tuning. \textbf{BLIP} \cite{li2022blip} uses late cross-modal fusion via cross-attention with a generative answer head. \textbf{ViLT} \cite{kim2021vilt} uses early unified fusion with a classification head over a fixed 3,129-label vocabulary derived from VQA v2 training answers.
+
+\subsection{Dataset}
+
+We evaluate on the \textbf{GQA balanced validation split}, which contains 132,062 questions over 10,623 images. GQA questions are generated automatically from scene graphs using a compositional grammar. Each question is annotated along two independent axes: a \textbf{structural type} describing the reasoning form required, and a \textbf{semantic type} describing the visual content targeted. Every question is also paired with a \textbf{functional program} encoding the step-by-step reasoning operations used to derive the answer, which we use as a measure of reasoning depth in our error analysis.
+
+\subsection{Question Type Taxonomy}
+
+\paragraph{Structural and semantic types.} GQA annotates each question along two axes. The five \textbf{structural types} describe the reasoning form required: \textit{query} (open-ended retrieval), \textit{verify} (yes/no perceptual judgment), \textit{logical} (Boolean combination of two sub-propositions), \textit{choose} (select between two given candidates), and \textit{compare} (judge whether the same attribute holds for two objects). The five \textbf{semantic types} describe the visual content targeted: \textit{rel} (spatial/functional relations), \textit{attr} (object attributes such as color or material), \textit{obj} (object existence), \textit{cat} (object category), and \textit{global} (holistic scene properties such as room type or weather).
+
+\paragraph{The 5$\times$5 evaluation matrix.} Crossing the two axes produces a 5$\times$5 grid with 15 populated cells. Table~\ref{tab:matrix} shows the question counts per cell.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+ & \textbf{rel} & \textbf{attr} & \textbf{obj} & \textbf{cat} & \textbf{global} \\
+\midrule
+\textbf{query}   & 40,278 & 18,092 & ---    & 7,185 & 2,612 \\
+\textbf{verify}  & 15,602 &  8,053 & 2,879  & ---   &   879 \\
+\textbf{logical} &    --- &  3,411 & 12,685 & ---   &   --- \\
+\textbf{choose}  &  5,754 &  8,488 & ---    & 1,431 &   556 \\
+\textbf{compare} &    --- &  4,157 & ---    & ---   &   --- \\
+\bottomrule
+\end{tabular}
+\caption{Question counts per cell in the GQA balanced validation split (132,062 total).}
+\label{tab:matrix}
+\end{table}
+
+\paragraph{Grouped capability analysis.} The 15 cells will also be aggregated into capability groups. Structurally: \textbf{S1} open-ended retrieval (\textit{query}); \textbf{S2} binary perception (\textit{verify}~$+$~\textit{logical}); and \textbf{S3} constrained selection (\textit{choose}~$+$~\textit{compare}). Semantically: \textbf{V1} relational reasoning (\textit{rel}); \textbf{V2} attribute recognition (\textit{attr}); \textbf{V3} object detection (\textit{obj}); \textbf{V4} categorization (\textit{cat}); and \textbf{V5} scene understanding (\textit{global}).
+
+\subsection{Analysis Design}
+
+\textbf{(1) Cell-level evaluation.} For each of the 15 populated cells, we will report exact-match accuracy for both BLIP and ViLT, and the signed accuracy gap (BLIP$-$ViLT).\\
+\textbf{(2) Grouped capability evaluation.} We will aggregate results within each structural and semantic group to identify higher-level performance patterns across reasoning and visual capability categories.\\
+\textbf{(3) Reasoning chain depth analysis.} Using program length as a proxy for reasoning complexity, we will plot accuracy as a function of depth for each model to examine whether performance degrades faster for ViLT than for BLIP as reasoning complexity increases.
+
+\subsection{Evaluation Metric}
+
+We use \textbf{exact-match accuracy} after normalization: answers are lowercased, stripped of leading/trailing whitespace, and number words are converted to digits. We report accuracy per cell, per capability group, and per program depth bin.
+
+\subsection{Computational Resources}
+
+Both models will be evaluated on CPU. Based on a 50-sample running test, estimated full-dataset runtimes are approximately 2.3 hours for ViLT and 9.8 hours for BLIP.
+
+%% ─────────────────────────────────────────────────────────────
+\section{Timeline}
+Week 1 we will focus on data preparation and infrastructure: building the question-type classification pipeline, vocabulary filtering, and a unified inference wrapper with normalized exact-match scoring. Week 2 will cover full inference and computation of cell-level accuracy and depth analysis. Week 3 will be dedicated to generating heatmaps, grouped capability plots, qualitative error analysis, and writing the results and discussion. Week 4 is reserved for finalizing and proofreading the paper.
+
+\bibliographystyle{acl_natbib}
+\bibliography{custom}
+
+\end{document}

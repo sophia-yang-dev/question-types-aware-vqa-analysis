@@ -1,0 +1,417 @@
+\documentclass[11pt]{article}
+
+\usepackage[preprint]{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage{enumitem}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{colortbl}
+
+\title{Question-Type-Aware Evaluation of Multimodal Fusion Strategies\\
+in Vision-Language Models for VQA\\[0.3em]
+\large Milestone Report}
+
+\author{
+  \textbf{Sophia Yang} \\
+  Simon Fraser University \\
+  \texttt{xya134@sfu.ca}
+  \And
+  \textbf{Qingrui Li} \\
+  Simon Fraser University\\
+  \texttt{qingruil@sfu.ca}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Visual Question Answering (VQA) models are typically evaluated using overall accuracy, which can obscure systematic weaknesses across different reasoning types. In this project, we conduct a question-type-aware evaluation of two representative vision-language architectures, BLIP and ViLT. These models differ primarily in their multimodal fusion strategies and output formulations. Using the GQA balanced validation split, which provides a structured two-axis taxonomy of structural and semantic question types, we evaluate both models across a 5$\times$5 question-type matrix covering 15 populated categories. We further analyze how model accuracy varies with the logic depth derived from GQA's functional program annotations. Our study aims to identify systematic performance patterns across question types and examine whether differences can be attributed to the models' fusion strategies.
+\end{abstract}
+
+%% ─────────────────────────────────────────────────────────────
+\section{Introduction}
+
+Visual Question Answering (VQA) is a multimodal task in which a model predicts a natural language answer given an image and a question: $(I, Q) \rightarrow A$. It requires joint visual recognition, language understanding, cross-modal alignment, and higher-order reasoning. Several vision-language models have achieved strong results on widely used VQA benchmarks~\cite{tan2019lxmert,lu2019vilbert,kim2021vilt,li2022blip}.
+
+However, VQA performance is typically evaluated using overall accuracy aggregated over all question types, which can hide systematic weaknesses. Consider two questions from the same scene: \emph{``Does the grass look green?''} requires only a binary perceptual judgment, while \emph{``Is the boy to the left or right of the bag the lady is holding?''} requires localizing multiple objects and parsing a chained spatial relation. A model that excels at one but fails at the other has a qualitatively different capability profile that overall accuracy cannot reveal.
+
+We examine BLIP~\cite{li2022blip} and ViLT~\cite{kim2021vilt} across a structured taxonomy of question types. These two models represent fundamentally different fusion paradigms: BLIP connects image and text via explicit cross-modal attention (\emph{late fusion}), while ViLT processes image patches and text tokens jointly in a single transformer from the first layer (\emph{early fusion}). Both are publicly available with VQA-fine-tuned checkpoints and comparable in scale, making fusion strategy the primary variable under study.
+
+We study two questions: does each model perform consistently across all question types, or is it vulnerable in certain categories? And which categories show the largest inter-model gap, and can it be explained by their fusion strategies?
+
+Our preliminary results reveal large variation across question-type cells, with normalized accuracy ranging from 34.4\% to 95.6\%---a spread of over 60 percentage points that aggregate accuracy completely conceals. We observe that this variation correlates more strongly with the \emph{answer vocabulary type} implicit in each cell (binary yes/no; constrained choice; open-vocabulary) than with the structural or semantic label alone. Crucially, BLIP's advantage over ViLT is largest in open-vocabulary cells---consistent with the hypothesis that a generative answer head confers an architectural advantage when the answer space is unconstrained---while the gap narrows substantially in binary-answer cells, where ViLT's classifier is competitive. We also find that logic depth interacts differently with each structural type: \textit{query} accuracy declines monotonically with depth, \textit{verify} accuracy is nearly flat, and \textit{logical} questions show a sharp accuracy cliff at higher depths. These findings motivate a refined analysis plan described in Section~\ref{sec:future}.
+
+%% ─────────────────────────────────────────────────────────────
+\section{Related Work}
+
+\subsection{VQA Datasets}
+VQA v2~\cite{goyal2017making} is a widely used benchmark that reduces language bias by pairing visually similar images with different answers, but does not provide a principled taxonomy of question types. The GQA dataset~\cite{hudson2019gqa} addresses this by generating questions compositionally from scene graphs and annotating every question with a structural type (the reasoning form required) and a semantic type (the visual content targeted), making it well-suited for the fine-grained evaluation we propose.
+
+\subsection{Vision-Language Models}
+Early VQA models introduced attention mechanisms to learn which image regions to attend to given a question~\cite{anderson2018bottom,yang2016stacked}, followed by large-scale transformer-based pre-training~\cite{lu2019vilbert,chen2020uniter}. More recent work diverges in fusion strategy. \textbf{ViLT}~\cite{kim2021vilt} tokenizes raw image patches and processes them jointly with text tokens in a single transformer (\textit{early fusion}). \textbf{BLIP}~\cite{li2022blip} encodes image and question separately and aligns them via cross-attention layers (\textit{late fusion}), pre-trained on large-scale image-text pairs for richer visual-semantic grounding.
+
+\subsection{Question-Type Analysis in VQA}
+Several studies suggest that aggregate accuracy is insufficient to characterize model reasoning. \citet{johnson2017clevr} showed models can exploit statistical regularities without genuine visual understanding, and \citet{agrawal2018don} demonstrated that strong models often effectively ignore the image for certain question types. These findings motivate our fine-grained evaluation across GQA's structured question taxonomy.
+
+%% ─────────────────────────────────────────────────────────────
+\section{Approach}
+
+\subsection{Models}
+We evaluate two publicly available VQA-fine-tuned checkpoints from Hugging Face without any additional fine-tuning. \textbf{BLIP}~\cite{li2022blip} uses late cross-modal fusion via cross-attention with a generative answer head (open vocabulary). \textbf{ViLT}~\cite{kim2021vilt} uses early unified fusion with a classification head over a fixed 3,129-label vocabulary derived from VQA v2 training answers. Both models are evaluated on CPU; estimated runtimes for the full 132,062-question split are approximately 2.3 hours for ViLT and 9.8 hours for BLIP.
+
+\subsection{Dataset, Taxonomy, and Logic Depth}
+
+\paragraph{Dataset.}
+We evaluate on the \textbf{GQA balanced validation split}, containing 132,062 questions over 10,234 unique images. Questions are generated automatically from scene graphs using a compositional grammar, and each is annotated along two independent axes: a \textbf{structural type} and a \textbf{semantic type}. Every question is also paired with a \textbf{functional program} encoding the step-by-step reasoning operations used to derive the answer.
+
+\paragraph{Structural and semantic types.}
+The five \textbf{structural types} describe the reasoning form: \textit{query} (open-ended retrieval), \textit{verify} (yes/no judgment), \textit{logical} (Boolean combination of sub-propositions), \textit{choose} (select from two given candidates), and \textit{compare} (judge whether the same attribute holds for two objects). The five \textbf{semantic types} describe the visual content: \textit{rel} (spatial/functional relations), \textit{attr} (object attributes), \textit{obj} (object existence), \textit{cat} (object category), and \textit{global} (holistic scene properties). Crossing the two axes produces a 5$\times$5 grid with 15 populated cells; question counts are shown in Table~\ref{tab:matrix}.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+ & \textbf{rel} & \textbf{attr} & \textbf{obj} & \textbf{cat} & \textbf{global} \\
+\midrule
+\textbf{query}   & 40,278 & 18,092 & ---    & 7,185 & 2,612 \\
+\textbf{verify}  & 15,602 &  8,053 & 2,879  & ---   &   879 \\
+\textbf{logical} &    --- &  3,411 & 12,685 & ---   &   --- \\
+\textbf{choose}  &  5,754 &  8,488 & ---    & 1,431 &   556 \\
+\textbf{compare} &    --- &  4,157 & ---    & ---   &   --- \\
+\bottomrule
+\end{tabular}
+\caption{Question counts per cell in the GQA balanced validation split (132,062 total). Dashes indicate unpopulated cells.}
+\label{tab:matrix}
+\end{table}
+
+\paragraph{Logic depth.}
+We define \textbf{logic depth} as the number of operations in a question's GQA functional program, measuring reasoning chain length independently of surface question length. Logic depth varies substantially across structural types: \textit{query}, \textit{verify}, and \textit{choose} span depths 2--5; \textit{compare} concentrates at depths 2--3; and \textit{logical} spans depths 4--9 with a notably uneven distribution. We treat logic depth as an independent analysis axis to examine how performance scales with reasoning complexity within and across structural types. Depth distributions per structural type are shown in Appendix~\ref{app:depth_dist}.
+
+\subsection{Evaluation Protocol}
+\label{sec:eval}
+
+Two issues complicate direct comparison of BLIP and ViLT. First, BLIP's generative head can produce surface-form variants of correct answers (\emph{bricks} vs.\ \emph{brick}, \emph{blonde} vs.\ \emph{blond}) that are semantically equivalent but fail strict string comparison. Second, ViLT's fixed 3,129-label classifier cannot predict GT answers outside its vocabulary---an architectural ceiling unrelated to visual or linguistic understanding. We address both with three evaluation modes:
+\begin{enumerate}[leftmargin=*, topsep=2pt, itemsep=1pt]
+  \item \textbf{Strict}: raw exact-match with no preprocessing. Establishes a performance floor and surfaces surface-form artifacts.
+  \item \textbf{Normalized}: exact match after six canonical rules applied identically to both prediction and GT---lowercase; strip punctuation; remove leading articles (\emph{a}, \emph{an}, \emph{the}); convert number words to digits; British$\to$American spelling (\emph{grey}$\to$\emph{gray}, \emph{blonde}$\to$\emph{blond}); depluralize (\emph{bricks}$\to$\emph{brick}). Normalization improves accuracy by $\approx$1.0pp for BLIP and $\approx$0.9pp for ViLT.
+  \item \textbf{Normalized, OOV-excluded}: normalized accuracy restricted to the 128,064 questions (97.0\%) whose canonical GT answer falls within ViLT's vocabulary. The excluded 3,998 questions (3.0\%) are structurally unanswerable by ViLT; removing them isolates architectural capability from vocabulary coverage. Exclusion changes the BLIP--ViLT gap by only 0.1pp (3.0pp$\to$2.9pp), confirming the OOV issue is not a primary driver of the gap.
+\end{enumerate}
+Per-cell OOV rates, mismatch examples, and full analysis are in Appendix~\ref{app:eval_protocol}.
+
+%% ─────────────────────────────────────────────────────────────
+\section{Results}
+\label{sec:results}
+
+\subsection{Cell-Level Accuracy}
+\label{sec:results_cell}
+
+Table~\ref{tab:overall} reports overall accuracy under all three modes. Normalization improves accuracy by 1.0pp for BLIP and 0.9pp for ViLT, confirming that surface-form variation accounts for a small but non-trivial fraction of errors. Excluding OOV questions shifts the BLIP--ViLT gap by only 0.1pp (from 3.0pp to 2.9pp), confirming that ViLT's vocabulary constraint is not a primary driver of the inter-model difference.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Mode} & \textbf{BLIP} & \textbf{ViLT} & \textbf{Gap} \\
+\midrule
+Strict                    & 52.9\% & 50.0\% & $+$2.9pp \\
+Normalized                & 53.9\% & 50.9\% & $+$3.0pp \\
+Norm., OOV-excluded       & 55.4\% & 52.5\% & $+$2.9pp \\
+\bottomrule
+\end{tabular}
+\caption{Overall accuracy under three evaluation modes. OOV-excluded restricts to the 97.0\% of questions whose GT answer is in ViLT's vocabulary.}
+\label{tab:overall}
+\end{table}
+
+Figure~\ref{fig:heatmaps} shows normalized accuracy for both models and the BLIP$-$ViLT gap per cell. Accuracy varies dramatically: the highest cells are \textit{verify}$\times$\textit{global} and \textit{choose}$\times$\textit{global} (both above 90\%), while the lowest are \textit{query}$\times$\textit{rel} (BLIP 43.4\%, ViLT 41.9\%) and \textit{query}$\times$\textit{global} (BLIP 38.7\%, ViLT 34.4\%). BLIP leads ViLT across most cells, with the largest advantages on \textit{choose}$\times$\textit{cat} ($+$11.3pp) and \textit{choose}$\times$\textit{attr} ($+$9.7pp). The sole exception is \textit{compare}$\times$\textit{attr}, where both models hover near chance (BLIP 49.9\%, ViLT 50.1\%).
+
+\begin{figure*}[t]
+  \centering
+  \begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\linewidth]{figures/heatmap_blip_norm.png}
+    \caption{BLIP accuracy (normalized)}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\linewidth]{figures/heatmap_vilt_norm.png}
+    \caption{ViLT accuracy (normalized)}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\linewidth]{figures/heatmap_gap_norm.png}
+    \caption{Gap: BLIP$-$ViLT (normalized)}
+  \end{subfigure}
+  \caption{Per-cell normalized accuracy for BLIP (left), ViLT (center), and the BLIP$-$ViLT gap (right). Grey cells are unpopulated in GQA. The gap heatmap uses a diverging scale: red indicates BLIP leads, blue indicates ViLT leads.}
+  \label{fig:heatmaps}
+\end{figure*}
+
+Two patterns stand out in Figure~\ref{fig:heatmaps}. First, accuracy correlates strongly with the \textbf{answer vocabulary type} implicit in each cell. Cells with binary answer spaces (\textit{verify}$\times$*, \textit{logical}$\times$*) consistently achieve 50--96\%, while open-vocabulary cells (\textit{query}$\times$\textit{rel}, \textit{query}$\times$\textit{global}) cluster at 35--57\%. This suggests answer type may be a stronger predictor of difficulty than the structural or semantic label alone---an observation we plan to test explicitly (Section~\ref{sec:future}). The anomalous \textit{compare}$\times$\textit{attr} cell provides supporting evidence: despite its comparison framing, 78\% of its GT answers are binary yes/no, and its accuracy pattern mirrors binary-answer cells rather than other open-vocabulary cells.
+
+Second, even within a single cell, question difficulty may vary substantially. The \textit{query}$\times$\textit{rel} cell spans logic depths 3--5 and encompasses both simple one-hop lookups (\emph{``What is the woman in front of?''}) and complex multi-hop chains (\emph{``The traffic light that is red and black is hanging from what?''}). Treating these as a single evaluation unit may conceal important intra-cell variation, which we address in the next section.
+
+\subsection{Logic Depth Analysis}
+\label{sec:results_depth}
+
+Figure~\ref{fig:depth} shows normalized accuracy as a function of logic depth, broken down by structural type. Three distinct patterns emerge.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/depth_by_structural.png}
+  \caption{Normalized accuracy vs.\ logic depth, per structural type. Solid lines and filled markers: depth bins with $n \geq 200$. Dashed lines and faded markers: sparse bins ($n < 200$; interpret with caution). BLIP: blue circles (\textbullet); ViLT: orange squares.}
+  \label{fig:depth}
+\end{figure*}
+
+\textbf{Query} accuracy declines monotonically with depth: from 50.2\% at depth 2 to 44.4\% at depth 3 and 38.7\% at depth 4 for BLIP. Open-vocabulary retrieval becomes progressively harder as the reasoning chain lengthens, because deeper programs require identifying an object through more intermediate filtering steps before querying its property.
+
+\textbf{Verify} accuracy is nearly flat across depths 2--4 (73.2\%$\to$72.1\%$\to$69.8\% for BLIP, a total decline of only 3.4pp). The binary yes/no output format appears to absorb the additional complexity imposed by longer programs: even when a question requires chaining two or three relations, the constrained answer space limits the impact on accuracy.
+
+\textbf{Logical} questions show the most dramatic pattern: accuracy falls from 74.2\% at depth 4 to 60.4\% at depth 5, then drops sharply to 30.7\% at depth 7 for BLIP---a decline of nearly 30 percentage points. Notably, at depth 7, ViLT (34.8\%) outperforms BLIP (30.7\%), the only case across all cells and depths where ViLT consistently leads. We hypothesize that BLIP's generative decoder over-generates on the compound filtered disjunctions at depth 7 (\emph{e.g.}, \emph{``Is there any grass or mud that is not brown?''}), producing multi-word phrases that fail exact-match even after normalization, while ViLT's classifier directly outputs \emph{yes} or \emph{no}. Verifying this through error mode analysis is part of our planned future work.
+
+The bimodal depth distribution of \textit{logical}$\times$\textit{obj}---10,585 questions at depth 5, only 85 at depth 6, and 3,506 at depth 7---suggests this cell conflates two structurally distinct subtypes. Depth-5 questions conjoin or disjoin two simple existence checks (\emph{``Are there both plates and forks?''}), while depth-7 questions apply filters to each branch before the logical combination (\emph{``Is there either a table or a bookcase that is made of wood?''}). Collapsing both into one cell label hides the dramatic accuracy cliff between them, illustrating that the current 5$\times$5 taxonomy may not be the right decomposition for capturing what drives model difficulty.
+
+%% ─────────────────────────────────────────────────────────────
+\section{Future Work}
+\label{sec:future}
+
+\textbf{Answer-type decomposition.}
+We will explicitly annotate each question by its answer vocabulary type---binary yes/no; constrained choice (answer must be one of two candidates given in the question); open-vocabulary---and test whether this axis explains more per-cell accuracy variance than the GQA structural label. If answer type is a stronger predictor, it implies that what primarily drives model difficulty is the output space constraint rather than the reasoning form, with direct implications for how fusion architectures should be evaluated.
+
+\textbf{Program operation analysis.}
+GQA functional programs contain typed operations (\texttt{select}, \texttt{relate}, \texttt{filter}, \texttt{query}, \texttt{exist}, \texttt{verify}, \texttt{AND}/\texttt{OR}). We will analyze which operations---in isolation and in combination---are most predictive of error independently of the cell label. For example, questions containing \texttt{relate} steps may be consistently harder than same-cell questions without them. This connects to fusion strategy: if \texttt{relate}-heavy questions disproportionately cause failures, it tests whether early fusion (ViLT) handles spatial grounding differently from late fusion (BLIP).
+
+\textbf{Per-type logic depth analysis.}
+For cells with high depth variance---\textit{verify}$\times$\textit{rel} (depths 2--5), \textit{logical}$\times$\textit{obj} (bimodal depths 5 and 7)---we will quantify how much intra-cell accuracy variance depth alone explains, independently of the cell label. This tests whether the current 5$\times$5 taxonomy is masking fine-grained complexity that logic depth captures.
+
+\textbf{Systematic error analysis.}
+We will characterize errors to understand \emph{why} models fail, not just \emph{where}. For binary cells, we will measure yes/no prediction bias---a model outputting \emph{yes} on 80\% of \textit{verify} questions is not reasoning, regardless of its accuracy. For open-vocabulary cells, we will categorize wrong answers by semantic distance from GT: saying \emph{red} for GT \emph{blue} is an attribute-level error; saying \emph{running} for GT \emph{blue} indicates object-level confusion. We will also compute cross-model error overlap per cell: questions where both models fail point to question-level difficulty driven by visual content; questions where only one model fails reveal architectural differences---potentially localizing where early and late fusion diverge.
+
+\textbf{Scene graph correlation.}
+GQA scene graphs annotate every image with object bounding boxes, attributes, and relation types. We will test whether per-question error rates correlate with scene complexity metrics (object count, relation density, target object size) independently of question type. This distinguishes visual grounding failures---the model cannot locate the relevant object---from language-reasoning failures---the model finds the object but answers incorrectly.
+
+\textbf{Taxonomy revision.}
+Pending the results above, we will consider a revised taxonomy that uses answer type and dominant program operations as explicit axes. If these axes explain more per-cell variance than the GQA structural labels, the revised taxonomy would provide a more principled framework for evaluating and comparing multimodal fusion strategies.
+
+%% ─────────────────────────────────────────────────────────────
+\bibliographystyle{acl_natbib}
+\bibliography{custom}
+
+%% ═════════════════════════════════════════════════════════════
+\clearpage
+\onecolumn
+\appendix
+
+\begin{center}
+  {\LARGE\textbf{Appendix}}
+\end{center}
+\vspace{1em}
+
+\section{Evaluation Protocol Details}
+\label{app:eval_protocol}
+
+\subsection{Normalization Rules}
+All six normalization rules are applied identically to both the model prediction and the GT answer before comparison, so neither model is advantaged:
+\begin{enumerate}[leftmargin=*, topsep=2pt, itemsep=1pt]
+  \item Lowercase all characters.
+  \item Strip leading/trailing whitespace and punctuation.
+  \item Remove leading articles (\emph{a}, \emph{an}, \emph{the}).
+  \item Convert number words to digits (\emph{two}$\to$2, \emph{three}$\to$3, \ldots).
+  \item Apply British$\to$American spelling corrections (\emph{grey}$\to$\emph{gray}, \emph{colour}$\to$\emph{color}, \emph{blonde}$\to$\emph{blond}).
+  \item Depluralize: strip trailing \emph{-s} or \emph{-es} unless the word is in an exception list (e.g., \emph{yes}, \emph{bus}).
+\end{enumerate}
+
+\subsection{ViLT Out-of-Vocabulary Analysis}
+
+ViLT's classifier head was trained on the 3,129 most frequent VQA v2 answers. This vocabulary covers common single-word answers: binary yes/no, spatial terms (left, right, front, behind), common colors, numbers, and frequent object nouns. However, GQA was constructed from scene graphs and generates a wider variety of GT answers---rare scene types, domain-specific category labels, and uncommon attribute terms---many of which fall outside the VQA v2 distribution. These are structurally impossible for ViLT to predict regardless of visual or linguistic understanding. Table~\ref{tab:oov} summarizes the OOV impact.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Metric} & \textbf{Before norm.} & \textbf{After norm.} \\
+\midrule
+OOV questions              & 5,341 (4.0\%)  & 3,998 (3.0\%) \\
+BLIP acc.\ on OOV qs.      & \multicolumn{2}{c}{6.0\%} \\
+ViLT acc.\ on OOV qs.      & \multicolumn{2}{c}{0.0\% (structural ceiling)} \\
+Gap change (excl.\ OOV)    & \multicolumn{2}{c}{3.0pp $\to$ 2.9pp ($\Delta = 0.1$pp)} \\
+\bottomrule
+\end{tabular}
+\caption{ViLT OOV summary. Normalization (primarily rule~5: \emph{grey}$\to$\emph{gray}) resolves 1,343 OOV cases, reducing the rate from 4.0\% to 3.0\%. Most affected cells: \textit{query}$\times$\textit{global} (10.2\%), \textit{query}$\times$\textit{cat} (6.3\%), \textit{query}$\times$\textit{rel} (6.0\%).}
+\label{tab:oov}
+\end{table}
+
+\noindent\textbf{Why OOV is concentrated in open-vocabulary cells.} Binary-answer cells (\textit{verify}, \textit{logical}) always have GT answers in \{yes, no\}; constrained-choice cells (\textit{choose}) always draw GT from two candidates visible in the question text (e.g., \emph{left}/\emph{right}, \emph{wood}/\emph{metal}). Both are almost entirely within ViLT's vocabulary. By contrast, open-vocabulary cells (\textit{query}$\times$*) require predicting an unconstrained word, and GQA's scene-graph-derived questions include rare scene labels (e.g., \emph{cafeteria}, \emph{courtyard}), uncommon category names, and specific material terms that are infrequent in VQA v2 training data.
+
+\noindent\textbf{Why OOV does not explain the gap.} The OOV rate heatmap (Figure~\ref{fig:oov_heatmap}) confirms concentration in open-vocabulary cells. However, excluding OOV questions shifts the BLIP--ViLT gap by only 0.1pp. This is because: (1) OOV questions are only 3.0\% of the dataset; (2) BLIP itself achieves only 6.0\% accuracy on OOV questions, since their answers are rare enough that neither model handles them reliably. The vocabulary constraint is therefore not a primary explanation for the performance difference.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.50\linewidth]{figures/oov_heatmap.png}
+  \caption{OOV rate per cell after normalization. Open-vocabulary cells are most affected; binary-answer cells have zero or near-zero OOV rates.}
+  \label{fig:oov_heatmap}
+\end{figure}
+
+\subsection{BLIP Answer Mismatch}
+
+Because BLIP generates free-form text, we examined whether surface-form mismatches were causing legitimate correct answers to fail exact-match even after normalization. We ran a substring-match detector over all BLIP incorrect predictions to identify ``correct-ish'' failures---cases where the GT answer appears as a substring of BLIP's output or vice versa. Findings by structural type:
+
+\begin{description}[leftmargin=0pt, topsep=2pt, itemsep=3pt]
+  \item[\textit{verify} (0 cases):]
+    Clean. Binary yes/no has no surface variation.
+  \item[\textit{logical} (16 cases):]
+    All are detector false positives: \emph{``no''} appears as a substring of BLIP outputs like \emph{``snow''} or \emph{``notes''}. None are genuine correct answers.
+  \item[\textit{choose} (223 cases):]
+    All judged wrong. Choose questions provide two candidate answers in the question text; BLIP is expected to select one. Instead, BLIP generates free-form phrases (e.g., \emph{``the left side''} for GT \emph{``left''}), which do not match even after normalization.
+  \item[\textit{query} (4,893 cases):]
+    Two genuine surface-form patterns resolved by normalization: plural/singular (\emph{bricks}$\to$\emph{brick}, rule~6) and spelling variants (\emph{blonde}$\to$\emph{blond}, rule~5). Remaining cases are genuine model errors.
+\end{description}
+
+\noindent Table~\ref{tab:mismatch_examples} shows representative examples illustrating each case type.
+
+\begin{table}[h]
+\centering
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{p{1.5cm} p{3.2cm} p{1.5cm} p{1.3cm} p{3.5cm}}
+\toprule
+\textbf{Type} & \textbf{BLIP prediction} & \textbf{GT answer} & \textbf{Verdict} & \textbf{Explanation} \\
+\midrule
+logical  & ``no snow on the ground'' & ``no''    & wrong & detector false positive: ``no'' $\subset$ ``no snow'' \\
+query    & ``blonde''                & ``blond'' & correct & resolved by rule~5 (British spelling) \\
+query    & ``bricks''                & ``brick'' & correct & resolved by rule~6 (depluralize) \\
+query    & ``blue and white''        & ``blue''  & wrong  & color over-specification; genuine model error \\
+query    & ``blue''                  & ``dark blue'' & wrong & modifier omission; genuine model error \\
+choose   & ``the left side''         & ``left''  & wrong  & free-form generation outside given candidates \\
+\bottomrule
+\end{tabular}
+\caption{Representative BLIP mismatch cases. Rules~5 and 6 resolve the only two genuine surface-form patterns. All remaining cases are genuine model errors or detector false positives.}
+\label{tab:mismatch_examples}
+\end{table}
+
+\noindent Conclusion: after applying rules 1--6, the residual mismatch reflects genuine model failures rather than annotation or surface-form artifacts. No additional normalization is warranted.
+
+%% ─────────────────────────────────────────────────────────────
+\section{Logic Depth Distribution}
+\label{app:depth_dist}
+
+Figure~\ref{fig:depth_hist} shows the logic depth distribution for each structural type. Key observations: (1) \textit{query}, \textit{verify}, and \textit{choose} concentrate at depths 2--4; (2) \textit{compare} is almost entirely at depth 3; (3) \textit{logical} spans depths 4--9 with a bimodal concentration at depths 5 and 7, separated by a near-empty depth-6 band (only 85 questions).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{figures/depth_hist_by_structural.png}
+  \caption{Logic depth distribution per structural type. Note the bimodal pattern for \textit{logical}: depth 5 (66\%, single AND/OR chain) and depth 7 (22\%, compound filtered disjunction), with a near-empty depth-6 band between them.}
+  \label{fig:depth_hist}
+\end{figure}
+
+%% ─────────────────────────────────────────────────────────────
+\section{Example Questions per Structural Type and Logic Depth}
+\label{app:examples}
+
+Table~\ref{tab:examples} shows representative questions at different logic depths for each structural type, with abbreviated reasoning programs. These examples illustrate how question complexity increases with depth and how the same structural type can encode fundamentally different reasoning tasks depending on depth.
+
+\begin{table}[h]
+\centering
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{1.1cm} c p{6.2cm} p{1.2cm} p{4.8cm}}
+\toprule
+\textbf{Type} & \textbf{Depth} & \textbf{Question} & \textbf{Answer} & \textbf{Program (abbreviated)} \\
+\midrule
+\multirow{4}{*}{query}
+  & 2 & What place is pictured? & shore
+    & select(scene) $\to$ query(place) \\
+  & 3 & What is the woman in front of? & statue
+    & select(woman) $\to$ relate(in front of) $\to$ query(name) \\
+  & 4 & What is under the utensil on the left? & napkin
+    & select(utensil) $\to$ filter(left) $\to$ relate(under) $\to$ query(name) \\
+  & 5 & What is the animal to the left of the brown object to the left of the speaker called? & cat
+    & select(speaker) $\to$ relate $\to$ filter(brown) $\to$ relate $\to$ query(name) \\
+\midrule
+\multirow{4}{*}{verify}
+  & 2 & Does the man ride a horse? & no
+    & select(man) $\to$ verify\_rel(riding, horse) \\
+  & 3 & Does the person to the left of the man appear to be sitting? & yes
+    & select(man) $\to$ relate(left) $\to$ verify(sitting) \\
+  & 4 & Are there napkins under the utensil to the left of the rice? & yes
+    & select(rice) $\to$ relate(left) $\to$ relate(under) $\to$ exist \\
+  & 5 & Are there fries to the right of the bottle that looks dark and brown? & yes
+    & select(bottle) $\to$ filter(dark) $\to$ filter(brown) $\to$ relate(right) $\to$ exist \\
+\midrule
+\multirow{3}{*}{logical}
+  & 4 & Is the shirt sleeveless and white? & yes
+    & select(shirt) $\to$ verify(sleeveless) $\parallel$ verify\_color(white) $\to$ AND \\
+  & 5 & Are there both plates and forks in this picture? & yes
+    & select(fork) $\to$ exist $\parallel$ select(plate) $\to$ exist $\to$ AND \\
+  & 7 & Is there any grass or mud that is not brown? & no
+    & select(grass) $\to$ filter(not brown) $\to$ exist $\parallel$ select(mud) $\to$ filter(not brown) $\to$ exist $\to$ OR \\
+\midrule
+\multirow{2}{*}{choose}
+  & 2 & Which side of the photo is the knife on? & left
+    & select(knife) $\to$ query(hposition) \\
+  & 3 & Does the person to the left of the frisbee appear to be wearing a glove? & no
+    & select(frisbee) $\to$ relate(left) $\to$ verify\_rel(wearing, glove) \\
+\midrule
+\multirow{2}{*}{compare}
+  & 2 & Is the shirt sleeveless and white? & yes
+    & select(shirt) $\to$ verify(sleeveless) $\parallel$ verify\_color(white) $\to$ AND \\
+  & 3 & Does the fur look both black and thin? & no
+    & select(fur) $\to$ verify\_color(black) $\parallel$ verify(thin) $\to$ AND \\
+\bottomrule
+\end{tabular}
+\caption{Representative questions per structural type at different logic depths. Programs are abbreviated for readability; $\parallel$ denotes two independent sub-chains that feed a final logical operation. Increasing depth reflects more intermediate filtering, relation-traversal, or logical-combination steps required before the final query or verification.}
+\label{tab:examples}
+\end{table}
+
+%% ─────────────────────────────────────────────────────────────
+\section{Full Per-Cell Accuracy Table}
+\label{app:full_table}
+
+Table~\ref{tab:full} reports per-cell accuracy for both models under all three evaluation modes, sorted by question count.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{llr ccc ccc}
+\toprule
+ & & & \multicolumn{3}{c}{\textbf{BLIP}} & \multicolumn{3}{c}{\textbf{ViLT}} \\
+\cmidrule(lr){4-6}\cmidrule(lr){7-9}
+\textbf{Struct.} & \textbf{Sem.} & \textbf{$n$}
+  & Strict & Norm. & Norm.$+$OOV
+  & Strict & Norm. & Norm.$+$OOV \\
+\midrule
+query   & rel    & 40,278 & .382 & .434 & .434 & .368 & .419 & .419 \\
+query   & attr   & 18,092 & .505 & .516 & .516 & .484 & .494 & .494 \\
+verify  & rel    & 15,602 & .722 & .722 & .722 & .684 & .684 & .684 \\
+logical & obj    & 12,685 & .514 & .514 & .514 & .489 & .489 & .489 \\
+choose  & attr   &  8,488 & .640 & .654 & .654 & .537 & .557 & .557 \\
+verify  & attr   &  8,053 & .672 & .672 & .672 & .650 & .650 & .650 \\
+query   & cat    &  7,185 & .517 & .567 & .567 & .480 & .532 & .532 \\
+choose  & rel    &  5,754 & .520 & .521 & .521 & .507 & .508 & .508 \\
+compare & attr   &  4,157 & .486 & .499 & .499 & .488 & .501 & .501 \\
+logical & attr   &  3,411 & .708 & .708 & .708 & .672 & .672 & .672 \\
+verify  & obj    &  2,879 & .786 & .786 & .786 & .740 & .740 & .740 \\
+query   & global &  2,612 & .349 & .387 & .387 & .309 & .344 & .344 \\
+choose  & cat    &  1,431 & .729 & .751 & .751 & .607 & .638 & .638 \\
+verify  & global &    879 & .956 & .956 & .956 & .951 & .951 & .951 \\
+choose  & global &    556 & .944 & .956 & .956 & .896 & .910 & .910 \\
+\midrule
+\multicolumn{3}{l}{\textbf{Overall}}
+  & .529 & .539 & .554
+  & .500 & .509 & .525 \\
+\bottomrule
+\end{tabular}
+\caption{Per-cell accuracy for BLIP and ViLT under strict, normalized, and normalized OOV-excluded evaluation. ``Norm.$+$OOV'' reports both models on the 97.0\% subset of questions whose canonical GT answer is in ViLT's vocabulary. Cells are sorted by question count.}
+\label{tab:full}
+\end{table}
+
+\end{document}

@@ -1,4 +1,0 @@
-Evaluation mode: relaxed
-Questions processed: 132,062
-BLIP overall accuracy: 0.5412
-ViLT overall accuracy: 0.5096
